@@ -252,6 +252,7 @@ function App() {
   };
 
   const skeletonCards = Array.from({ length: 4 });
+  const loadingStageClassName = `loading-swap ${isLoading ? 'loading-swap--loading' : 'loading-swap--ready'}`;
 
   return (
     <div className="bg-light min-vh-100 d-flex flex-column">
@@ -292,9 +293,9 @@ function App() {
       {/* 히어로 섹션 (프로필 이미지 및 정보) */}
       <header className={`bg-white border-bottom py-5 mb-5 shadow-sm ${!isLoading ? 'loading-fade-in' : ''}`}>
         <div className="container">
-          <div className="row align-items-center">
-            {isLoading ? (
-              <>
+          <div className={loadingStageClassName}>
+            <div className="loading-swap__layer loading-swap__skeleton">
+              <div className="row align-items-center">
                 <div className="col-md-3 text-center mb-4 mb-md-0 position-relative">
                   <div className="profile-skeleton mx-auto skeleton-pulse" />
                   <div className="skeleton-sample__badge mx-auto mt-3 skeleton-pulse" />
@@ -312,9 +313,10 @@ function App() {
                     </div>
                   </div>
                 </div>
-              </>
-            ) : (
-              <>
+              </div>
+            </div>
+            <div className="loading-swap__layer loading-swap__content">
+              <div className="row align-items-center">
                 {/* 프로필 이미지 영역 */}
                 <div className="col-md-3 text-center mb-4 mb-md-0 position-relative">
                   <div className="position-relative d-inline-block">
@@ -363,8 +365,8 @@ function App() {
                     </div>
                   )}
                 </div>
-              </>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -399,74 +401,77 @@ function App() {
           <div className="flex-grow-1 border-bottom"></div>
         </div>
 
-        {isLoading ? (
-          <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4" aria-busy="true" aria-live="polite">
-            {skeletonCards.map((_, index) => (
-              <div className="col" key={index}>
-                <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden project-card skeleton-card">
-                  <div className="skeleton-media skeleton-pulse" />
-                  <div className="card-body p-3 d-flex flex-column">
-                    <div className="skeleton-bar skeleton-pulse w-75 mb-3" />
-                    <div className="mb-2 d-flex flex-wrap gap-1">
-                      <div className="skeleton-tag skeleton-pulse" />
-                      <div className="skeleton-tag skeleton-pulse" />
-                      <div className="skeleton-tag skeleton-pulse" />
-                    </div>
-                    <div className="skeleton-bar skeleton-pulse w-100 mb-2" />
-                    <div className="skeleton-bar skeleton-pulse w-85 mb-2" />
-                    <div className="skeleton-bar skeleton-pulse w-60 mt-auto" />
-                    <div className="d-flex gap-2 mt-3">
-                      <div className="skeleton-button skeleton-pulse flex-fill" />
-                      <div className="skeleton-button skeleton-pulse flex-fill" />
+        <div className={loadingStageClassName} aria-busy={isLoading} aria-live="polite">
+          <div className="loading-swap__layer loading-swap__skeleton">
+            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4">
+              {skeletonCards.map((_, index) => (
+                <div className="col" key={index}>
+                  <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden project-card skeleton-card">
+                    <div className="skeleton-media skeleton-pulse" />
+                    <div className="card-body p-3 d-flex flex-column">
+                      <div className="skeleton-bar skeleton-pulse w-75 mb-3" />
+                      <div className="mb-2 d-flex flex-wrap gap-1">
+                        <div className="skeleton-tag skeleton-pulse" />
+                        <div className="skeleton-tag skeleton-pulse" />
+                        <div className="skeleton-tag skeleton-pulse" />
+                      </div>
+                      <div className="skeleton-bar skeleton-pulse w-100 mb-2" />
+                      <div className="skeleton-bar skeleton-pulse w-85 mb-2" />
+                      <div className="skeleton-bar skeleton-pulse w-60 mt-auto" />
+                      <div className="d-flex gap-2 mt-3">
+                        <div className="skeleton-button skeleton-pulse flex-fill" />
+                        <div className="skeleton-button skeleton-pulse flex-fill" />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        ) : (
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="projects-grid" direction="horizontal">
-              {(provided) => (
-                <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4" {...provided.droppableProps} ref={provided.innerRef}>
-                  {projects.map((p, index) => (
-                    <Draggable key={p.id} draggableId={String(p.id)} index={index} isDragDisabled={!isAdmin}>
-                      {(provided, snapshot) => (
-                        <div className="col" ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                          <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden project-card ${snapshot.isDragging ? 'shadow-lg border-primary border' : ''}`}>
-                            <div style={{ height: '160px', backgroundColor: '#f8f9fa' }}>
-                              {p.imageUrl ? <img src={resolveUrl(p.imageUrl)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" /> : <div className="d-flex align-items-center justify-content-center h-100 text-muted small">No Image</div>}
+          <div className="loading-swap__layer loading-swap__content">
+            <DragDropContext onDragEnd={onDragEnd}>
+              <Droppable droppableId="projects-grid" direction="horizontal">
+                {(provided) => (
+                  <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4" {...provided.droppableProps} ref={provided.innerRef}>
+                    {projects.map((p, index) => (
+                      <Draggable key={p.id} draggableId={String(p.id)} index={index} isDragDisabled={!isAdmin}>
+                        {(provided, snapshot) => (
+                          <div className="col" ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                            <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden project-card ${snapshot.isDragging ? 'shadow-lg border-primary border' : ''}`}>
+                              <div style={{ height: '160px', backgroundColor: '#f8f9fa' }}>
+                                {p.imageUrl ? <img src={resolveUrl(p.imageUrl)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" /> : <div className="d-flex align-items-center justify-content-center h-100 text-muted small">No Image</div>}
+                              </div>
+                              <div className="card-body p-3 d-flex flex-column">
+                                <h6 className="card-title fw-bold mb-2 text-truncate">{p.title}</h6>
+                                <div className="mb-2 d-flex flex-wrap gap-1">
+                                  {p.techStack && p.techStack.split(',').map((s, i) => (
+                                    <span key={i} className="badge rounded-pill bg-light text-primary border border-primary-subtle" style={{fontSize: '0.65rem'}}>#{s.trim()}</span>
+                                  ))}
+                                </div>
+                                <p className="card-text text-muted mb-3" style={{ fontSize: '0.85rem', flexGrow: 1, display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>
+                                <div className="d-flex gap-2">
+                                  <button className="btn btn-outline-dark btn-sm flex-fill fw-bold" onClick={() => setShowDetail(p)}>자세히 보기</button>
+                                  {p.linkUrl && <a href={p.linkUrl} target="_blank" rel="noreferrer" className="btn btn-dark btn-sm flex-fill fw-bold project-link-btn">Link</a>}
+                                </div>
+                              </div>
+                              {isAdmin && (
+                                <div className="card-footer bg-white border-0 d-flex gap-1 pb-3 pt-0 px-3">
+                                  <button className="btn btn-light btn-sm flex-grow-1 border" onClick={() => { setEditingId(p.id); setFormData({ title: p.title || '', techStack: p.techStack || '', description: p.description || '', linkUrl: p.linkUrl || '', longDescription: p.longDescription || '' }); window.scrollTo(0,0); }}>수정</button>
+                                  <button className="btn btn-light text-danger btn-sm flex-grow-1 border" onClick={() => handleDelete(p.id)}>삭제</button>
+                                </div>
+                              )}
                             </div>
-                            <div className="card-body p-3 d-flex flex-column">
-                              <h6 className="card-title fw-bold mb-2 text-truncate">{p.title}</h6>
-                              <div className="mb-2 d-flex flex-wrap gap-1">
-                                {p.techStack && p.techStack.split(',').map((s, i) => (
-                                  <span key={i} className="badge rounded-pill bg-light text-primary border border-primary-subtle" style={{fontSize: '0.65rem'}}>#{s.trim()}</span>
-                                ))}
-                              </div>
-                              <p className="card-text text-muted mb-3" style={{ fontSize: '0.85rem', flexGrow: 1, display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>
-                              <div className="d-flex gap-2">
-                                <button className="btn btn-outline-dark btn-sm flex-fill fw-bold" onClick={() => setShowDetail(p)}>자세히 보기</button>
-                                {p.linkUrl && <a href={p.linkUrl} target="_blank" rel="noreferrer" className="btn btn-dark btn-sm flex-fill fw-bold project-link-btn">Link</a>}
-                              </div>
-                            </div>
-                            {isAdmin && (
-                              <div className="card-footer bg-white border-0 d-flex gap-1 pb-3 pt-0 px-3">
-                                <button className="btn btn-light btn-sm flex-grow-1 border" onClick={() => { setEditingId(p.id); setFormData({ title: p.title || '', techStack: p.techStack || '', description: p.description || '', linkUrl: p.linkUrl || '', longDescription: p.longDescription || '' }); window.scrollTo(0,0); }}>수정</button>
-                                <button className="btn btn-light text-danger btn-sm flex-grow-1 border" onClick={() => handleDelete(p.id)}>삭제</button>
-                              </div>
-                            )}
                           </div>
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        )}
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          </div>
+        </div>
       </main>
 
       {/* 푸터 (연락처 정보) */}
