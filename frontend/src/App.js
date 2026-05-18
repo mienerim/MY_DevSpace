@@ -15,6 +15,7 @@ function App() {
 
   // --- [상태 관리] ---
   const [projects, setProjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -54,29 +55,37 @@ function App() {
     return payload;
   }, []);
 
+  const delay = useCallback((ms) => new Promise((resolve) => setTimeout(resolve, ms)), []);
+
   const fetchProjectsWithRetry = useCallback(async (attemptsLeft) => {
     try {
       const data = await fetchJson(`${API_BASE_URL}/api/projects`);
       const list = Array.isArray(data) ? data : [];
       setProjects(list.slice().sort((a, b) => (a?.seq ?? 0) - (b?.seq ?? 0)));
+      return true;
     } catch (err) {
       if (attemptsLeft > 0) {
-        setTimeout(() => { fetchProjectsWithRetry(attemptsLeft - 1); }, 1500);
-        return;
+        await delay(1500);
+        return fetchProjectsWithRetry(attemptsLeft - 1);
       }
       console.error("프로젝트 로드 실패:", err);
       setProjects([]);
+      return false;
     }
-  }, [API_BASE_URL, fetchJson]);
+  }, [API_BASE_URL, delay, fetchJson]);
 
-  const fetchData = useCallback(() => {
-    // 프로필 정보 로드
-    fetchJson(`${API_BASE_URL}/api/profile`)
-      .then(data => setMyInfo(data || {}))
-      .catch(err => console.error("프로필 로드 실패:", err));
-
-    // 프로젝트 목록 로드 (순서 정렬)
-    fetchProjectsWithRetry(2);
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await Promise.allSettled([
+        fetchJson(`${API_BASE_URL}/api/profile`)
+          .then(data => setMyInfo(data || {}))
+          .catch(err => console.error("프로필 로드 실패:", err)),
+        fetchProjectsWithRetry(2),
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [API_BASE_URL, fetchJson, fetchProjectsWithRetry]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -242,6 +251,8 @@ function App() {
     setFormData({...formData, longDescription: template});
   };
 
+  const skeletonCards = Array.from({ length: 4 });
+
   return (
     <div className="bg-light min-vh-100 d-flex flex-column">
       <nav className={`navbar navbar-dark bg-dark sticky-top shadow-sm site-navbar ${navCollapsed ? 'site-navbar--collapsed' : ''}`}>
@@ -279,63 +290,87 @@ function App() {
       )}
 
       {/* 히어로 섹션 (프로필 이미지 및 정보) */}
-      <header className="bg-white border-bottom py-5 mb-5 shadow-sm">
+      <header className={`bg-white border-bottom py-5 mb-5 shadow-sm ${!isLoading ? 'loading-fade-in' : ''}`}>
         <div className="container">
           <div className="row align-items-center">
-            {/* 프로필 이미지 영역 */}
-            <div className="col-md-3 text-center mb-4 mb-md-0 position-relative">
-              <div className="position-relative d-inline-block">
-                <img 
-                  src={profilePreview || (myInfo.profileImg ? resolveUrl(myInfo.profileImg) : "/placeholder-180.svg")} 
-                  alt="Profile" 
-                  className="rounded-circle shadow border border-5 border-light" 
-                  style={{ width: '180px', height: '180px', objectFit: 'cover' }}
-                />
-                {isAdmin && (
-                  <div className="mt-2">
-                    <label htmlFor="profile-file" className="btn btn-xs btn-secondary shadow-sm" style={{fontSize: '0.7rem'}}>
-                      📸 사진 변경
-                    </label>
-                    <input type="file" id="profile-file" className="d-none" onChange={onProfileFileChange} accept="image/*" />
+            {isLoading ? (
+              <>
+                <div className="col-md-3 text-center mb-4 mb-md-0 position-relative">
+                  <div className="profile-skeleton mx-auto skeleton-pulse" />
+                  <div className="skeleton-sample__badge mx-auto mt-3 skeleton-pulse" />
+                </div>
+                <div className="col-md-9">
+                  <div className="profile-copy-skeleton">
+                    <div className="skeleton-bar skeleton-pulse w-50 mb-3" />
+                    <div className="skeleton-bar skeleton-pulse w-25 mb-4" />
+                    <div className="skeleton-bar skeleton-pulse w-100 mb-2" />
+                    <div className="skeleton-bar skeleton-pulse w-75 mb-2" />
+                    <div className="skeleton-bar skeleton-pulse w-50 mb-4" />
+                    <div className="d-flex gap-2 flex-wrap justify-content-center justify-content-md-start">
+                      <div className="skeleton-chip skeleton-pulse" />
+                      <div className="skeleton-chip skeleton-pulse" />
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* 프로필 이미지 영역 */}
+                <div className="col-md-3 text-center mb-4 mb-md-0 position-relative">
+                  <div className="position-relative d-inline-block">
+                    <img 
+                      src={profilePreview || (myInfo.profileImg ? resolveUrl(myInfo.profileImg) : "/placeholder-180.svg")} 
+                      alt="Profile" 
+                      className="rounded-circle shadow border border-5 border-light" 
+                      style={{ width: '180px', height: '180px', objectFit: 'cover' }}
+                    />
+                    {isAdmin && (
+                      <div className="mt-2">
+                        <label htmlFor="profile-file" className="btn btn-xs btn-secondary shadow-sm" style={{fontSize: '0.7rem'}}>
+                          📸 사진 변경
+                        </label>
+                        <input type="file" id="profile-file" className="d-none" onChange={onProfileFileChange} accept="image/*" />
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-            {/* 프로필 정보 영역 */}
-            <div className="col-md-9">
-              {isAdmin ? (
-                <div className="p-4 border rounded-4 bg-light shadow-inner">
-                  <h6 className="fw-bold text-primary mb-3">👤 내 프로필 수정</h6>
-                  <div className="row g-2">
-                    <div className="col-md-6"><input className="form-control" value={myInfo.name} onChange={e => setMyInfo({...myInfo, name: e.target.value})} placeholder="이름" /></div>
-                    <div className="col-md-6"><input className="form-control" value={myInfo.role} onChange={e => setMyInfo({...myInfo, role: e.target.value})} placeholder="직무" /></div>
-                    <div className="col-12"><textarea className="form-control" rows="2" value={myInfo.intro} onChange={e => setMyInfo({...myInfo, intro: e.target.value})} placeholder="자기소개" /></div>
-                    <div className="col-md-4"><input className="form-control" value={myInfo.github} onChange={e => setMyInfo({...myInfo, github: e.target.value})} placeholder="GitHub URL" /></div>
-                    <div className="col-md-4"><input className="form-control" value={myInfo.blog} onChange={e => setMyInfo({...myInfo, blog: e.target.value})} placeholder="Blog URL" /></div>
-                    <div className="col-md-4"><button className="btn btn-primary w-100 fw-bold" onClick={handleProfileSave}>💾 정보 및 사진 저장</button></div>
-                  </div>
+                {/* 프로필 정보 영역 */}
+                <div className="col-md-9">
+                  {isAdmin ? (
+                    <div className="p-4 border rounded-4 bg-light shadow-inner">
+                      <h6 className="fw-bold text-primary mb-3">👤 내 프로필 수정</h6>
+                      <div className="row g-2">
+                        <div className="col-md-6"><input className="form-control" value={myInfo.name} onChange={e => setMyInfo({...myInfo, name: e.target.value})} placeholder="이름" /></div>
+                        <div className="col-md-6"><input className="form-control" value={myInfo.role} onChange={e => setMyInfo({...myInfo, role: e.target.value})} placeholder="직무" /></div>
+                        <div className="col-12"><textarea className="form-control" rows="2" value={myInfo.intro} onChange={e => setMyInfo({...myInfo, intro: e.target.value})} placeholder="자기소개" /></div>
+                        <div className="col-md-4"><input className="form-control" value={myInfo.github} onChange={e => setMyInfo({...myInfo, github: e.target.value})} placeholder="GitHub URL" /></div>
+                        <div className="col-md-4"><input className="form-control" value={myInfo.blog} onChange={e => setMyInfo({...myInfo, blog: e.target.value})} placeholder="Blog URL" /></div>
+                        <div className="col-md-4"><button className="btn btn-primary w-100 fw-bold" onClick={handleProfileSave}>💾 정보 및 사진 저장</button></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-md-start">
+                      <h1 className="fw-bold text-dark mb-1">{myInfo.name || "이름을 등록하세요"}</h1>
+                      <h4 className="text-primary fw-normal mb-3">{myInfo.role || "직무를 등록하세요"}</h4>
+                      <p className="text-secondary mb-4" style={{ maxWidth: '700px', lineHeight: '1.8', fontSize: '1.05rem' }}>
+                        {myInfo.intro || "자기소개를 입력해 주세요."}
+                      </p>
+                      <div className="d-flex gap-2 justify-content-center justify-content-md-start">
+                        {myInfo.github && <a href={myInfo.github} target="_blank" rel="noreferrer" className="btn btn-dark px-4 rounded-pill shadow-sm">GitHub</a>}
+                        {myInfo.blog && <a href={myInfo.blog} target="_blank" rel="noreferrer" className="btn btn-outline-primary px-4 rounded-pill shadow-sm">Blog</a>}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-center text-md-start">
-                  <h1 className="fw-bold text-dark mb-1">{myInfo.name || "이름을 등록하세요"}</h1>
-                  <h4 className="text-primary fw-normal mb-3">{myInfo.role || "직무를 등록하세요"}</h4>
-                  <p className="text-secondary mb-4" style={{ maxWidth: '700px', lineHeight: '1.8', fontSize: '1.05rem' }}>
-                    {myInfo.intro || "자기소개를 입력해 주세요."}
-                  </p>
-                  <div className="d-flex gap-2 justify-content-center justify-content-md-start">
-                    {myInfo.github && <a href={myInfo.github} target="_blank" rel="noreferrer" className="btn btn-dark px-4 rounded-pill shadow-sm">GitHub</a>}
-                    {myInfo.blog && <a href={myInfo.blog} target="_blank" rel="noreferrer" className="btn btn-outline-primary px-4 rounded-pill shadow-sm">Blog</a>}
-                  </div>
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       {/* 메인 콘텐츠 (프로젝트 리스트) */}
-      <main className="container flex-grow-1 pb-5">
+      <main className={`container flex-grow-1 pb-5 ${!isLoading ? 'loading-fade-in' : ''}`}>
         {isAdmin && (
           <div className="card shadow-sm mb-5 border-0 rounded-4 overflow-hidden">
             <div className="card-header bg-dark text-white fw-bold py-3">📦 새 프로젝트 추가</div>
@@ -364,47 +399,74 @@ function App() {
           <div className="flex-grow-1 border-bottom"></div>
         </div>
 
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="projects-grid" direction="horizontal">
-            {(provided) => (
-              <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4" {...provided.droppableProps} ref={provided.innerRef}>
-                {projects.map((p, index) => (
-                  <Draggable key={p.id} draggableId={String(p.id)} index={index} isDragDisabled={!isAdmin}>
-                    {(provided, snapshot) => (
-                      <div className="col" ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                        <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden project-card ${snapshot.isDragging ? 'shadow-lg border-primary border' : ''}`}>
-                          <div style={{ height: '160px', backgroundColor: '#f8f9fa' }}>
-                            {p.imageUrl ? <img src={resolveUrl(p.imageUrl)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" /> : <div className="d-flex align-items-center justify-content-center h-100 text-muted small">No Image</div>}
-                          </div>
-                          <div className="card-body p-3 d-flex flex-column">
-                            <h6 className="card-title fw-bold mb-2 text-truncate">{p.title}</h6>
-                            <div className="mb-2 d-flex flex-wrap gap-1">
-                              {p.techStack && p.techStack.split(',').map((s, i) => (
-                                <span key={i} className="badge rounded-pill bg-light text-primary border border-primary-subtle" style={{fontSize: '0.65rem'}}>#{s.trim()}</span>
-                              ))}
-                            </div>
-                            <p className="card-text text-muted mb-3" style={{ fontSize: '0.85rem', flexGrow: 1, display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>
-                            <div className="d-flex gap-2">
-                              <button className="btn btn-outline-dark btn-sm flex-fill fw-bold" onClick={() => setShowDetail(p)}>자세히 보기</button>
-                              {p.linkUrl && <a href={p.linkUrl} target="_blank" rel="noreferrer" className="btn btn-dark btn-sm flex-fill fw-bold project-link-btn">Link</a>}
-                            </div>
-                          </div>
-                          {isAdmin && (
-                            <div className="card-footer bg-white border-0 d-flex gap-1 pb-3 pt-0 px-3">
-                              <button className="btn btn-light btn-sm flex-grow-1 border" onClick={() => { setEditingId(p.id); setFormData({ title: p.title || '', techStack: p.techStack || '', description: p.description || '', linkUrl: p.linkUrl || '', longDescription: p.longDescription || '' }); window.scrollTo(0,0); }}>수정</button>
-                              <button className="btn btn-light text-danger btn-sm flex-grow-1 border" onClick={() => handleDelete(p.id)}>삭제</button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
+        {isLoading ? (
+          <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4" aria-busy="true" aria-live="polite">
+            {skeletonCards.map((_, index) => (
+              <div className="col" key={index}>
+                <div className="card h-100 border-0 shadow-sm rounded-4 overflow-hidden project-card skeleton-card">
+                  <div className="skeleton-media skeleton-pulse" />
+                  <div className="card-body p-3 d-flex flex-column">
+                    <div className="skeleton-bar skeleton-pulse w-75 mb-3" />
+                    <div className="mb-2 d-flex flex-wrap gap-1">
+                      <div className="skeleton-tag skeleton-pulse" />
+                      <div className="skeleton-tag skeleton-pulse" />
+                      <div className="skeleton-tag skeleton-pulse" />
+                    </div>
+                    <div className="skeleton-bar skeleton-pulse w-100 mb-2" />
+                    <div className="skeleton-bar skeleton-pulse w-85 mb-2" />
+                    <div className="skeleton-bar skeleton-pulse w-60 mt-auto" />
+                    <div className="d-flex gap-2 mt-3">
+                      <div className="skeleton-button skeleton-pulse flex-fill" />
+                      <div className="skeleton-button skeleton-pulse flex-fill" />
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
-          </Droppable>
-        </DragDropContext>
+            ))}
+          </div>
+        ) : (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="projects-grid" direction="horizontal">
+              {(provided) => (
+                <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-4" {...provided.droppableProps} ref={provided.innerRef}>
+                  {projects.map((p, index) => (
+                    <Draggable key={p.id} draggableId={String(p.id)} index={index} isDragDisabled={!isAdmin}>
+                      {(provided, snapshot) => (
+                        <div className="col" ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                          <div className={`card h-100 border-0 shadow-sm rounded-4 overflow-hidden project-card ${snapshot.isDragging ? 'shadow-lg border-primary border' : ''}`}>
+                            <div style={{ height: '160px', backgroundColor: '#f8f9fa' }}>
+                              {p.imageUrl ? <img src={resolveUrl(p.imageUrl)} className="w-100 h-100" style={{ objectFit: 'cover' }} alt="" /> : <div className="d-flex align-items-center justify-content-center h-100 text-muted small">No Image</div>}
+                            </div>
+                            <div className="card-body p-3 d-flex flex-column">
+                              <h6 className="card-title fw-bold mb-2 text-truncate">{p.title}</h6>
+                              <div className="mb-2 d-flex flex-wrap gap-1">
+                                {p.techStack && p.techStack.split(',').map((s, i) => (
+                                  <span key={i} className="badge rounded-pill bg-light text-primary border border-primary-subtle" style={{fontSize: '0.65rem'}}>#{s.trim()}</span>
+                                ))}
+                              </div>
+                              <p className="card-text text-muted mb-3" style={{ fontSize: '0.85rem', flexGrow: 1, display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.description}</p>
+                              <div className="d-flex gap-2">
+                                <button className="btn btn-outline-dark btn-sm flex-fill fw-bold" onClick={() => setShowDetail(p)}>자세히 보기</button>
+                                {p.linkUrl && <a href={p.linkUrl} target="_blank" rel="noreferrer" className="btn btn-dark btn-sm flex-fill fw-bold project-link-btn">Link</a>}
+                              </div>
+                            </div>
+                            {isAdmin && (
+                              <div className="card-footer bg-white border-0 d-flex gap-1 pb-3 pt-0 px-3">
+                                <button className="btn btn-light btn-sm flex-grow-1 border" onClick={() => { setEditingId(p.id); setFormData({ title: p.title || '', techStack: p.techStack || '', description: p.description || '', linkUrl: p.linkUrl || '', longDescription: p.longDescription || '' }); window.scrollTo(0,0); }}>수정</button>
+                                <button className="btn btn-light text-danger btn-sm flex-grow-1 border" onClick={() => handleDelete(p.id)}>삭제</button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        )}
       </main>
 
       {/* 푸터 (연락처 정보) */}

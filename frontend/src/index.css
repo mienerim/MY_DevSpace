@@ -12,6 +12,93 @@ code {
     monospace;
 }
 
+.skeleton-pulse {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #e9ecef 25%, #f8f9fa 37%, #e9ecef 63%);
+  background-size: 400% 100%;
+  animation: skeletonPulse 1.35s ease-in-out infinite;
+}
+
+.skeleton-media {
+  height: 160px;
+  width: 100%;
+}
+
+.skeleton-bar {
+  height: 12px;
+  border-radius: 999px;
+}
+
+.skeleton-chip {
+  width: 72px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.skeleton-tag {
+  width: 52px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+.skeleton-button {
+  height: 34px;
+  border-radius: 999px;
+}
+
+.profile-skeleton {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.85);
+}
+
+.skeleton-sample__badge {
+  width: 86px;
+  height: 30px;
+  border-radius: 999px;
+}
+
+.profile-copy-skeleton {
+  max-width: 720px;
+}
+
+.skeleton-card {
+  min-height: 320px;
+}
+
+.loading-fade-in {
+  animation: loadingFadeIn 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes skeletonPulse {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes loadingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-pulse,
+  .loading-fade-in {
+    animation: none !important;
+  }
+}
+
 .site-navbar {
   height: 72px;
   overflow: hidden;
@@ -89,6 +176,7 @@ code {
   /* reveal from bottom without moving the border across card content */
   clip-path: inset(100% 0 0 0);
   transition: opacity 260ms ease !important;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
