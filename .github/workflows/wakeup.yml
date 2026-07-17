@@ -17,6 +17,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Connect repository to Cloudtype
+        id: connect
+        continue-on-error: true
+        uses: cloudtype-github-actions/connect@v1
+        with:
+          token: ${{ secrets.CLOUDTYPE_TOKEN }}
+          ghtoken: ${{ secrets.GHP_TOKEN }}
+
+      - name: Retry connect repository to Cloudtype
+        if: steps.connect.outcome == 'failure'
         uses: cloudtype-github-actions/connect@v1
         with:
           token: ${{ secrets.CLOUDTYPE_TOKEN }}
