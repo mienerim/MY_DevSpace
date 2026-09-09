@@ -70,6 +70,8 @@ Storage RLS(Row Level Security) Policy를 설정하여 외부 호출 권한을 �
 
 [ ] 로그 보완 및 예외 처리 강화
 
+[ ] CI/CD 
+
 1. 이력 설명 내용에 엔터 입력 받게하기 
 2. 블로그 기능 만들어서, 기술 블로그 or 트러블 슈팅 문제 좀 더 다루기 → react-notion-x 로 노션 통쨰로 임베드
 3. 구글 검색에 띄우기 (메타 태그, SEO, SSR)
